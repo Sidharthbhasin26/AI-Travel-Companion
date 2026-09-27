@@ -18,7 +18,7 @@ public class PaymentEntity {
 
     private Long bookingId;
 
-    private double money;
+    private double amount;
 
     private String currency;
 
