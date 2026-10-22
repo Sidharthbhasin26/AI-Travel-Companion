@@ -7,9 +7,11 @@ import com.AI_Travel_Companion.bookingservice.DTO.BookingResponse;
 import com.AI_Travel_Companion.bookingservice.DTO.FlightResponse;
 import com.AI_Travel_Companion.bookingservice.Entity.BookingEntity;
 import com.AI_Travel_Companion.bookingservice.Entity.BookingStatus;
+import com.AI_Travel_Companion.bookingservice.Event.PaymentSucceededEvent;
 import com.AI_Travel_Companion.bookingservice.Repository.BookingRepository;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
+import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -43,6 +45,23 @@ public class BookingService {
 
       return modelMapper.map(saved , BookingResponse.class);
 
+
+    }
+
+    @KafkaListener(topics = "payment-succeed" , groupId = "booking-group")
+    public void paymentSucceededEventConsumer(PaymentSucceededEvent event){
+        BookingEntity booking = bookingRepository.findById(event.getBookingId())
+                .orElseThrow(()->new RuntimeException("bookingId not found"));
+
+        //IDEMPOTENCY CHECK
+        if (booking.getStatus() == BookingStatus.CONFIRM){
+            System.out.println(event.getBookingId()+" "+"already Confirmed");
+            return;
+        }
+
+
+            booking.setStatus(BookingStatus.CONFIRM);
+            bookingRepository.save(booking);
 
     }
 }

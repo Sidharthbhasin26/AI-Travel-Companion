@@ -5,17 +5,24 @@ import com.AI_Travel_Companion.paymentservice.DTO.PaymentRequest;
 import com.AI_Travel_Companion.paymentservice.DTO.PaymentResponse;
 import com.AI_Travel_Companion.paymentservice.Entity.PaymentEntity;
 import com.AI_Travel_Companion.paymentservice.Entity.PaymentStatus;
+import com.AI_Travel_Companion.paymentservice.Event.PaymentSucceededEvent;
 import com.AI_Travel_Companion.paymentservice.Repository.PaymentRepository;
 import com.stripe.Stripe;
 import com.stripe.model.PaymentIntent;
 import com.stripe.param.PaymentIntentCreateParams;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PaymentService {
+
+    private final KafkaTemplate<String , Object> kafkaTemplate;
+
 
     private final PaymentRepository paymentRepository;
     @Value("${stripe.secret-key}")
@@ -43,7 +50,13 @@ public class PaymentService {
 
             paymentRepository.save(paymentEntity);
 
+
+            PaymentSucceededEvent event = new PaymentSucceededEvent(paymentRequest.getBookingId());
+            kafkaTemplate.send("payment-succeed" , event);
+
             return new PaymentResponse(intent.getClientSecret());
+
+
 
 
         } catch (Exception e) {
